@@ -1,20 +1,28 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Globalization;
+using System.Text;
 using System.Text.Json;
+using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Input;
+using Windows.Storage;
+using Windows.Storage.Pickers;
+using WinRT.Interop;
 
 namespace PurpleReaction.ControlUI;
 
 public sealed partial class MainWindow : Window
 {
     private readonly ObservableCollection<ReactionTrialResult> _trials = [];
+    private ReactionRunResult? _lastResult;
 
     public MainWindow()
     {
         this.InitializeComponent();
         TrialsListView.ItemsSource = _trials;
         ExePathTextBox.Text = BuildDefaultExePath();
+        VersionTextBlock.Text = $"Version: {BuildVersionString()}";
     }
 
     private static string BuildDefaultExePath()
@@ -67,6 +75,88 @@ public sealed partial class MainWindow : Window
         }
     }
 
+    private static string BuildVersionString()
+    {
+        Version? version = typeof(MainWindow).Assembly.GetName().Version;
+        if (version is null)
+        {
+            return "Unknown";
+        }
+
+        int build = version.Build >= 0 ? version.Build : 0;
+        return $"{version.Major}.{version.Minor}.{build}";
+    }
+
+    private static string BuildCsv(ReactionRunResult result)
+    {
+        StringBuilder builder = new();
+        builder.AppendLine("trial,random_delay_seconds,reaction_ms,false_start");
+        foreach (ReactionTrialResult trial in result.Trials)
+        {
+            builder.Append(trial.Trial.ToString(CultureInfo.InvariantCulture))
+                .Append(',')
+                .Append(trial.RandomDelaySeconds.ToString("F6", CultureInfo.InvariantCulture))
+                .Append(',');
+
+            if (!trial.FalseStart && trial.ReactionMs.HasValue)
+            {
+                builder.Append(trial.ReactionMs.Value.ToString("F6", CultureInfo.InvariantCulture));
+            }
+
+            builder.Append(',')
+                .Append(trial.FalseStart ? "1" : "0")
+                .AppendLine();
+        }
+
+        string averageText = result.AverageReactionMs.HasValue
+            ? result.AverageReactionMs.Value.ToString("F6", CultureInfo.InvariantCulture)
+            : string.Empty;
+        builder.Append("average,,")
+            .Append(averageText)
+            .AppendLine(",");
+        return builder.ToString();
+    }
+
+    private async void OnExportCsvClicked(object sender, RoutedEventArgs e)
+    {
+        if (_lastResult is null || _lastResult.Trials.Count == 0)
+        {
+            StatusTextBlock.Text = "No results available to export.";
+            return;
+        }
+
+        try
+        {
+            FileSavePicker picker = new();
+            picker.SuggestedStartLocation = PickerLocationId.DocumentsLibrary;
+            picker.FileTypeChoices.Add("CSV file", new List<string> { ".csv" });
+            picker.SuggestedFileName = $"PurpleReaction_{DateTime.Now:yyyyMMdd_HHmmss}";
+
+            nint hwnd = WindowNative.GetWindowHandle(this);
+            InitializeWithWindow.Initialize(picker, hwnd);
+
+            StorageFile? target = await picker.PickSaveFileAsync();
+            if (target is null)
+            {
+                StatusTextBlock.Text = "CSV export cancelled.";
+                return;
+            }
+
+            string csv = BuildCsv(_lastResult);
+            await FileIO.WriteTextAsync(target, csv);
+            StatusTextBlock.Text = $"CSV exported: {target.Path}";
+        }
+        catch (Exception ex)
+        {
+            StatusTextBlock.Text = $"CSV export failed: {ex.Message}";
+        }
+    }
+
+    private void OnTrialsListPointerEntered(object sender, PointerRoutedEventArgs e)
+    {
+        TrialsListView.Focus(FocusState.Pointer);
+    }
+
     private async void OnStartRunClicked(object sender, RoutedEventArgs e)
     {
         string exePath = ExePathTextBox.Text.Trim();
@@ -95,6 +185,7 @@ public sealed partial class MainWindow : Window
             $"PurpleReaction_{DateTime.UtcNow:yyyyMMdd_HHmmss}_{Guid.NewGuid():N}.json");
 
         StartRunButton.IsEnabled = false;
+        ExportCsvButton.IsEnabled = false;
         StatusTextBlock.Text = "Running fullscreen test...";
 
         try
@@ -143,11 +234,13 @@ public sealed partial class MainWindow : Window
                 return;
             }
 
+            _lastResult = result;
             _trials.Clear();
             foreach (ReactionTrialResult trial in result.Trials)
             {
                 _trials.Add(trial);
             }
+            ExportCsvButton.IsEnabled = _trials.Count > 0;
 
             string averageText = result.AverageReactionMs.HasValue
                 ? result.AverageReactionMs.Value.ToString("F3", CultureInfo.InvariantCulture)
@@ -163,6 +256,11 @@ public sealed partial class MainWindow : Window
         finally
         {
             StartRunButton.IsEnabled = true;
+            if (_lastResult is not null && _lastResult.Trials.Count > 0)
+            {
+                ExportCsvButton.IsEnabled = true;
+            }
+
             if (File.Exists(jsonPath))
             {
                 try

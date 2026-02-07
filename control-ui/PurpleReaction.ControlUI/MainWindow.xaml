@@ -7,79 +7,191 @@
     mc:Ignorable="d"
     Title="PurpleReaction Control UI">
 
-    <ScrollViewer>
-        <StackPanel Spacing="16" Padding="20">
-            <TextBlock FontSize="24" FontWeight="SemiBold" Text="PurpleReaction Control UI" />
-            <TextBlock TextWrapping="Wrap" Foreground="Gray"
-                       Text="This UI configures a run, then launches the timing-accurate fullscreen test process in run-once mode." />
+    <Grid Padding="20">
+        <Grid.Resources>
+            <SolidColorBrush x:Key="PrimaryBrush" Color="#5C3ED8" />
+            <SolidColorBrush x:Key="PrimaryBorderBrush" Color="#7D66E3" />
+            <SolidColorBrush x:Key="MutedBrush" Color="#6B7280" />
+        </Grid.Resources>
 
-            <Border Padding="16" BorderThickness="1" CornerRadius="8" BorderBrush="#334155">
-                <StackPanel Spacing="12">
-                    <TextBlock FontSize="18" FontWeight="SemiBold" Text="Run Settings" />
+        <Pivot>
+            <PivotItem Header="Run">
+                <Grid RowSpacing="16">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
 
-                    <StackPanel Spacing="6">
-                        <TextBlock Text="PurpleReaction.exe Path" />
-                        <TextBox x:Name="ExePathTextBox" />
+                    <StackPanel Grid.Row="0" Spacing="4">
+                        <TextBlock FontSize="24" FontWeight="SemiBold" Foreground="{StaticResource PrimaryBrush}" Text="PurpleReaction Control UI" />
+                        <TextBlock
+                            Foreground="{StaticResource MutedBrush}"
+                            Text="Configure a run, then launch the timing-accurate fullscreen test process in run-once mode."
+                            TextWrapping="Wrap" />
                     </StackPanel>
 
-                    <StackPanel Orientation="Horizontal" Spacing="12">
-                        <StackPanel Width="200" Spacing="6">
-                            <TextBlock Text="Min Delay (s)" />
-                            <TextBox x:Name="MinDelayTextBox" Text="2.0" />
-                        </StackPanel>
-                        <StackPanel Width="200" Spacing="6">
-                            <TextBlock Text="Max Delay (s)" />
-                            <TextBox x:Name="MaxDelayTextBox" Text="5.0" />
-                        </StackPanel>
-                        <StackPanel Width="200" Spacing="6">
-                            <TextBlock Text="Trials" />
-                            <TextBox x:Name="TrialsTextBox" Text="10" />
-                        </StackPanel>
-                    </StackPanel>
+                    <Border
+                        Grid.Row="1"
+                        Padding="16"
+                        BorderBrush="{StaticResource PrimaryBorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="8">
+                        <Grid RowSpacing="12">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
 
-                    <Button x:Name="StartRunButton" Width="200" Content="Start Fullscreen Run" Click="OnStartRunClicked" />
-                    <TextBlock x:Name="StatusTextBlock" TextWrapping="Wrap" />
-                </StackPanel>
-            </Border>
+                            <TextBlock Grid.Row="0" FontSize="18" FontWeight="SemiBold" Text="Run Settings" />
 
-            <Border Padding="16" BorderThickness="1" CornerRadius="8" BorderBrush="#334155">
-                <StackPanel Spacing="10">
-                    <TextBlock FontSize="18" FontWeight="SemiBold" Text="Latest Result" />
-                    <TextBlock x:Name="SummaryTextBlock" Text="No run yet." />
-                    <ListView x:Name="TrialsListView" Height="380">
-                        <ListView.Header>
-                            <Grid ColumnSpacing="16">
+                            <StackPanel Grid.Row="1" Spacing="6">
+                                <TextBlock Text="PurpleReaction.exe Path" />
+                                <TextBox x:Name="ExePathTextBox" />
+                            </StackPanel>
+
+                            <Grid Grid.Row="2" ColumnSpacing="12" RowSpacing="10">
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="90" />
-                                    <ColumnDefinition Width="160" />
-                                    <ColumnDefinition Width="140" />
-                                    <ColumnDefinition Width="120" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" FontWeight="SemiBold" Text="Trial" />
-                                <TextBlock Grid.Column="1" FontWeight="SemiBold" Text="Delay (s)" />
-                                <TextBlock Grid.Column="2" FontWeight="SemiBold" Text="Reaction (ms)" />
-                                <TextBlock Grid.Column="3" FontWeight="SemiBold" Text="False Start" />
+
+                                <StackPanel Grid.Column="0" Spacing="6">
+                                    <TextBlock Text="Min Delay (s)" />
+                                    <TextBox x:Name="MinDelayTextBox" Text="2.0" />
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="1" Spacing="6">
+                                    <TextBlock Text="Max Delay (s)" />
+                                    <TextBox x:Name="MaxDelayTextBox" Text="5.0" />
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="2" Spacing="6">
+                                    <TextBlock Text="Trials" />
+                                    <TextBox x:Name="TrialsTextBox" Text="10" />
+                                </StackPanel>
                             </Grid>
-                        </ListView.Header>
-                        <ListView.ItemTemplate>
-                            <DataTemplate>
-                                <Grid ColumnSpacing="16">
+
+                            <StackPanel Grid.Row="3" Spacing="8">
+                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <Button
+                                        x:Name="StartRunButton"
+                                        MinWidth="220"
+                                        Background="{StaticResource PrimaryBrush}"
+                                        Foreground="White"
+                                        Click="OnStartRunClicked"
+                                        Content="Start Fullscreen Run" />
+                                    <Button
+                                        x:Name="ExportCsvButton"
+                                        MinWidth="130"
+                                        BorderBrush="{StaticResource PrimaryBrush}"
+                                        BorderThickness="1"
+                                        Click="OnExportCsvClicked"
+                                        Content="Export CSV"
+                                        IsEnabled="False" />
+                                </StackPanel>
+                                <TextBlock x:Name="StatusTextBlock" TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <Border
+                        Grid.Row="2"
+                        Padding="16"
+                        BorderBrush="{StaticResource PrimaryBorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="8">
+                        <Grid RowSpacing="10">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Grid.Row="0" FontSize="18" FontWeight="SemiBold" Text="Latest Result" />
+                            <TextBlock x:Name="SummaryTextBlock" Grid.Row="1" Text="No run yet." />
+
+                            <Grid Grid.Row="2" RowSpacing="8">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="*" />
+                                </Grid.RowDefinitions>
+
+                                <Grid Grid.Row="0" ColumnSpacing="16" Margin="8,0,24,0">
                                     <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="90" />
-                                        <ColumnDefinition Width="160" />
-                                        <ColumnDefinition Width="140" />
-                                        <ColumnDefinition Width="120" />
+                                        <ColumnDefinition Width="70" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="110" />
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="{Binding Trial}" />
-                                    <TextBlock Grid.Column="1" Text="{Binding RandomDelaySecondsDisplay}" />
-                                    <TextBlock Grid.Column="2" Text="{Binding ReactionMsDisplay}" />
-                                    <TextBlock Grid.Column="3" Text="{Binding FalseStartDisplay}" />
+                                    <TextBlock Grid.Column="0" FontWeight="SemiBold" Text="Trial" />
+                                    <TextBlock Grid.Column="1" FontWeight="SemiBold" Text="Delay (s)" />
+                                    <TextBlock Grid.Column="2" FontWeight="SemiBold" Text="Reaction (ms)" />
+                                    <TextBlock Grid.Column="3" FontWeight="SemiBold" Text="False Start" />
                                 </Grid>
-                            </DataTemplate>
-                        </ListView.ItemTemplate>
-                    </ListView>
-                </StackPanel>
-            </Border>
-        </StackPanel>
-    </ScrollViewer>
+
+                                <ListView
+                                    x:Name="TrialsListView"
+                                    Grid.Row="1"
+                                    IsItemClickEnabled="False"
+                                    SelectionMode="None"
+                                    ScrollViewer.VerticalScrollMode="Enabled"
+                                    ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                    ScrollViewer.HorizontalScrollMode="Disabled"
+                                    ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                    PointerEntered="OnTrialsListPointerEntered">
+                                    <ListView.ItemContainerStyle>
+                                        <Style TargetType="ListViewItem">
+                                            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                            <Setter Property="Padding" Value="0" />
+                                            <Setter Property="MinHeight" Value="32" />
+                                        </Style>
+                                    </ListView.ItemContainerStyle>
+
+                                    <ListView.ItemTemplate>
+                                        <DataTemplate>
+                                            <Grid ColumnSpacing="16" Margin="8,0,24,0">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="70" />
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="110" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0" Text="{Binding Trial}" />
+                                                <TextBlock Grid.Column="1" Text="{Binding RandomDelaySecondsDisplay}" />
+                                                <TextBlock Grid.Column="2" Text="{Binding ReactionMsDisplay}" />
+                                                <TextBlock Grid.Column="3" Text="{Binding FalseStartDisplay}" />
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ListView.ItemTemplate>
+                                </ListView>
+                            </Grid>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </PivotItem>
+
+            <PivotItem Header="About">
+                <Border
+                    Padding="24"
+                    BorderBrush="{StaticResource PrimaryBorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="8">
+                    <StackPanel Spacing="12">
+                        <TextBlock FontSize="24" FontWeight="SemiBold" Foreground="{StaticResource PrimaryBrush}" Text="About PurpleReaction" />
+                        <TextBlock
+                            Text="Team Arion PurpleReaction Copyright (c) 2026 Team Arion and Mark Yu."
+                            TextWrapping="Wrap" />
+                        <TextBlock x:Name="VersionTextBlock" Text="Version: -" />
+                        <HyperlinkButton
+                            Content="GitHub Repository"
+                            NavigateUri="https://github.com/TeamArionSISHK/PurpleReaction" />
+                    </StackPanel>
+                </Border>
+            </PivotItem>
+        </Pivot>
+    </Grid>
 </Window>
