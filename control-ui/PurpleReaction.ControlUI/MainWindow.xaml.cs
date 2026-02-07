@@ -27,6 +27,12 @@ public sealed partial class MainWindow : Window
 
     private static string BuildDefaultExePath()
     {
+        string sideBySidePath = Path.Combine(AppContext.BaseDirectory, "PurpleReaction.exe");
+        if (File.Exists(sideBySidePath))
+        {
+            return sideBySidePath;
+        }
+
         string preferredConfig =
 #if DEBUG
             "Debug";

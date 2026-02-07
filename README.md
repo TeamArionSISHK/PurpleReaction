@@ -79,6 +79,31 @@ Recommended startup project:
 - `PurpleReaction.ControlUI` for control shell workflow
 - `PurpleReaction.Native` for direct runner debugging
 
+## Shipping / Packaging
+
+Use the packaging script from a Visual Studio Developer PowerShell:
+
+```powershell
+.\scripts\package-release.ps1 -Configuration Release
+```
+
+What it does:
+
+- Publishes `PurpleReaction.ControlUI` as a self-contained `win-x64` app.
+- Builds `PurpleReaction.Native` in the selected configuration.
+- Assembles a release folder containing:
+  - `PurpleReaction.ControlUI.exe`
+  - `PurpleReaction.exe` (native fullscreen timing runner)
+  - `README.md`
+  - `LICENSE`
+  - `appicon.jpg`
+- Generates a zip archive under `artifacts\`.
+
+Output paths:
+
+- Folder: `artifacts\release\<Configuration>\`
+- Zip: `artifacts\PurpleReaction-<Configuration>-win-x64.zip`
+
 ## Runtime Options (CLI)
 
 ```text
@@ -161,6 +186,7 @@ dotnet run --project .\control-ui\PurpleReaction.ControlUI\PurpleReaction.Contro
 
 The WinUI app launches `PurpleReaction.exe --run-once ... --json-out <temp file>`, waits for completion, then reads/displays results.
 In solution builds, it auto-discovers the native runner at `build-vs18\Release\PurpleReaction.exe` or `build-vs18\Debug\PurpleReaction.exe`.
+In packaged builds, it first tries `PurpleReaction.exe` next to `PurpleReaction.ControlUI.exe`.
 
 ## CSV Output
 
@@ -204,3 +230,4 @@ Build usually still succeeds, but for cleaner behavior copy to a local path like
 - `src/main.cpp` - full application implementation
 - `control-ui/PurpleReaction.ControlUI` - WinUI 3 control-shell (experimental)
 - `vs/PurpleReaction.Native` - Visual Studio native C++ project for the runner
+- `scripts/package-release.ps1` - release packaging script

@@ -181,6 +181,12 @@
                     BorderThickness="1"
                     CornerRadius="8">
                     <StackPanel Spacing="12">
+                        <Image
+                            Width="88"
+                            Height="88"
+                            HorizontalAlignment="Left"
+                            Source="ms-appx:///Assets/appicon.jpg"
+                            Stretch="UniformToFill" />
                         <TextBlock FontSize="24" FontWeight="SemiBold" Foreground="{StaticResource PrimaryBrush}" Text="About PurpleReaction" />
                         <TextBlock
                             Text="Team Arion PurpleReaction Copyright (c) 2026 Team Arion and Mark Yu."

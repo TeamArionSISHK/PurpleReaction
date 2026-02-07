@@ -2,6 +2,7 @@
 build/
 build-*/
 out/
+artifacts/
 bin/
 obj/
 PurpleReaction_*.csv
@@ -12,6 +13,7 @@ PurpleReaction_*.csv
 *.user
 *.userosscache
 *.sln.docstates
+*:Zone.Identifier
 
 # CMake
 CMakeCache.txt
