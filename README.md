@@ -87,6 +87,12 @@ Use the packaging script from a Visual Studio Developer PowerShell:
 .\scripts\package-release.ps1 -Configuration Release
 ```
 
+If PowerShell blocks local scripts on your machine, run:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\package-release.ps1 -Configuration Release
+```
+
 What it does:
 
 - Publishes `PurpleReaction.ControlUI` as a self-contained `win-x64` app.
@@ -103,23 +109,6 @@ Output paths:
 
 - Folder: `artifacts\release\<Configuration>\`
 - Zip: `artifacts\PurpleReaction-<Configuration>-win-x64.zip`
-
-## MSIX (Optional)
-
-You can also generate an unsigned sideload MSIX from a Visual Studio Developer PowerShell:
-
-```powershell
-.\scripts\package-msix.ps1 -Configuration Release
-```
-
-Output path:
-
-- `artifacts\msix\<Configuration>\`
-
-Notes:
-
-- This script builds an unsigned MSIX for local/testing sideload flows.
-- For production distribution, sign the MSIX with a trusted certificate.
 
 ## Runtime Options (CLI)
 

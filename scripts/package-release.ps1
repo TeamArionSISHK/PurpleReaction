@@ -21,12 +21,16 @@ if ([string]::IsNullOrWhiteSpace($OutputDir)) {
 }
 
 $publishDir = Join-Path $repoRoot "artifacts\publish-controlui\$Configuration"
-$nativeExe = Join-Path $repoRoot "build-vs18\$Configuration\PurpleReaction.exe"
+$nativeExePrimary = Join-Path $repoRoot "build-vs18\$Configuration\PurpleReaction.exe"
+$nativeExeFallback = Join-Path $repoRoot "vs\PurpleReaction.Native\build-vs18\$Configuration\PurpleReaction.exe"
 $zipPath = Join-Path $repoRoot "artifacts\PurpleReaction-$Configuration-$Runtime.zip"
 
 if (-not $SkipBuild) {
     Write-Host "Publishing Control UI..." -ForegroundColor Cyan
-    dotnet publish $controlUiProject -c $Configuration -r $Runtime -p:SelfContained=true -o $publishDir
+    dotnet publish $controlUiProject -c $Configuration -r $Runtime -p:Platform=x64 -p:SelfContained=true -o $publishDir
+    if ($LASTEXITCODE -ne 0) {
+        throw "Control UI publish failed."
+    }
 
     $msbuild = Get-Command msbuild -ErrorAction SilentlyContinue
     if (-not $msbuild) {
@@ -34,15 +38,25 @@ if (-not $SkipBuild) {
     }
 
     Write-Host "Building native runner..." -ForegroundColor Cyan
-    & $msbuild.Path $nativeProject /m /p:Configuration=$Configuration /p:Platform=x64
+    & $msbuild.Path $nativeProject /m /p:Configuration=$Configuration /p:Platform=x64 /p:SolutionDir="$repoRoot\"
+    if ($LASTEXITCODE -ne 0) {
+        throw "Native runner build failed."
+    }
 }
 
 if (-not (Test-Path $publishDir)) {
     throw "Control UI publish output missing: $publishDir"
 }
 
-if (-not (Test-Path $nativeExe)) {
-    throw "Native runner missing: $nativeExe"
+$nativeExe = $null
+if (Test-Path $nativeExePrimary) {
+    $nativeExe = $nativeExePrimary
+} elseif (Test-Path $nativeExeFallback) {
+    $nativeExe = $nativeExeFallback
+}
+
+if (-not $nativeExe) {
+    throw "Native runner missing. Checked: $nativeExePrimary and $nativeExeFallback"
 }
 
 if (Test-Path $OutputDir) {
