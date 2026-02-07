@@ -7,6 +7,8 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cwchar>
+#include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <random>
 #include <string>
@@ -23,6 +25,7 @@ struct TrialResult
 {
     double delaySeconds = 0.0;
     double reactionMs = 0.0;
+    bool falseStart = false;
 };
 
 enum class Phase
@@ -67,6 +70,7 @@ struct App
     int trialIndex = 0;
     Phase phase = Phase::BeginTrial;
     bool hasInput = false;
+    bool inputWasFalseStart = false;
     bool escapePressed = false;
     bool quitRequested = false;
 
@@ -79,6 +83,8 @@ struct App
     std::uniform_real_distribution<double> delayDist{2.0, 5.0};
     std::vector<TrialResult> results;
 };
+
+double ComputeAverageReactionMs(const App& app);
 
 LONGLONG QpcNow()
 {
@@ -123,6 +129,13 @@ void RecordRawInputPress(App& app)
     {
         app.inputQpc = QpcNow();
         app.hasInput = true;
+        app.inputWasFalseStart = false;
+    }
+    else if (app.phase == Phase::WaitingForStimulus && !app.hasInput)
+    {
+        app.inputQpc = QpcNow();
+        app.hasInput = true;
+        app.inputWasFalseStart = true;
     }
 }
 
@@ -435,20 +448,113 @@ void PumpMessages(App& app)
 void PrintResults(const App& app)
 {
     std::printf("\n=== Results ===\n");
-    double total = 0.0;
+    size_t validCount = 0;
+    size_t falseStartCount = 0;
     for (size_t i = 0; i < app.results.size(); ++i)
     {
-        std::printf("Trial %zu: delay=%.3f s, reaction=%.3f ms\n",
-            i + 1,
-            app.results[i].delaySeconds,
-            app.results[i].reactionMs);
-        total += app.results[i].reactionMs;
+        if (app.results[i].falseStart)
+        {
+            std::printf("Trial %zu: delay=%.3f s, FALSE START\n",
+                i + 1,
+                app.results[i].delaySeconds);
+            ++falseStartCount;
+        }
+        else
+        {
+            std::printf("Trial %zu: delay=%.3f s, reaction=%.3f ms\n",
+                i + 1,
+                app.results[i].delaySeconds,
+                app.results[i].reactionMs);
+            ++validCount;
+        }
     }
-    if (!app.results.empty())
+    if (validCount > 0)
     {
-        std::printf("Average reaction: %.3f ms\n", total / static_cast<double>(app.results.size()));
+        std::printf("Average reaction (valid only): %.3f ms\n", ComputeAverageReactionMs(app));
     }
+    std::printf("Valid trials: %zu, false starts: %zu\n", validCount, falseStartCount);
     std::printf("================\n");
+}
+
+double ComputeAverageReactionMs(const App& app)
+{
+    double total = 0.0;
+    size_t validCount = 0;
+    for (const TrialResult& trial : app.results)
+    {
+        if (!trial.falseStart)
+        {
+            total += trial.reactionMs;
+            ++validCount;
+        }
+    }
+    if (validCount == 0)
+    {
+        return 0.0;
+    }
+    return total / static_cast<double>(validCount);
+}
+
+std::string BuildDefaultCsvPath()
+{
+    SYSTEMTIME localTime{};
+    GetLocalTime(&localTime);
+
+    char fileName[128]{};
+    std::snprintf(
+        fileName,
+        sizeof(fileName),
+        "PurpleReaction_%04u%02u%02u_%02u%02u%02u.csv",
+        static_cast<unsigned>(localTime.wYear),
+        static_cast<unsigned>(localTime.wMonth),
+        static_cast<unsigned>(localTime.wDay),
+        static_cast<unsigned>(localTime.wHour),
+        static_cast<unsigned>(localTime.wMinute),
+        static_cast<unsigned>(localTime.wSecond));
+
+    return std::string(fileName);
+}
+
+bool ExportResultsCsv(const App& app, const std::string& path)
+{
+    if (app.results.empty())
+    {
+        std::printf("No results to export.\n");
+        return false;
+    }
+
+    std::ofstream out(path, std::ios::trunc);
+    if (!out.is_open())
+    {
+        std::printf("Failed to open CSV path: %s\n", path.c_str());
+        return false;
+    }
+
+    out << std::fixed << std::setprecision(6);
+    out << "trial,random_delay_seconds,reaction_ms,false_start\n";
+    for (size_t i = 0; i < app.results.size(); ++i)
+    {
+        out << (i + 1) << ","
+            << app.results[i].delaySeconds << ",";
+        if (app.results[i].falseStart)
+        {
+            out << ",1\n";
+        }
+        else
+        {
+            out << app.results[i].reactionMs << ",0\n";
+        }
+    }
+    out << "average,," << ComputeAverageReactionMs(app) << ",\n";
+
+    if (!out.good())
+    {
+        std::printf("Failed while writing CSV: %s\n", path.c_str());
+        return false;
+    }
+
+    std::printf("CSV exported: %s\n", path.c_str());
+    return true;
 }
 
 bool TryParseDoubleW(const wchar_t* value, double& out)
@@ -633,6 +739,49 @@ int PromptChoice(const char* prompt, int minValue, int maxValue)
     }
 }
 
+void PromptCsvExport(const App& app)
+{
+    if (app.results.empty())
+    {
+        return;
+    }
+
+    for (;;)
+    {
+        std::printf("\n=== CSV Export ===\n");
+        std::printf("1. Export to default filename\n");
+        std::printf("2. Export to custom path\n");
+        std::printf("3. Skip\n");
+
+        const int choice = PromptChoice("Select option: ", 1, 3);
+        if (choice == 3)
+        {
+            return;
+        }
+
+        if (choice == 1)
+        {
+            const std::string path = BuildDefaultCsvPath();
+            if (ExportResultsCsv(app, path))
+            {
+                return;
+            }
+            continue;
+        }
+
+        const std::string path = ReadLine("Enter CSV output path: ");
+        if (path.empty())
+        {
+            std::printf("Path cannot be empty.\n");
+            continue;
+        }
+        if (ExportResultsCsv(app, path))
+        {
+            return;
+        }
+    }
+}
+
 void ShowAboutPage()
 {
     std::printf("\n=== About PurpleReaction ===\n");
@@ -703,6 +852,7 @@ void ResetSessionState(App& app)
     app.trialIndex = 0;
     app.phase = Phase::BeginTrial;
     app.hasInput = false;
+    app.inputWasFalseStart = false;
     app.escapePressed = false;
     app.trialStartQpc = 0;
     app.stimulusQpc = 0;
@@ -750,6 +900,7 @@ SessionOutcome RunTestSession(App& app)
             app.stimulusQpc = 0;
             app.inputQpc = 0;
             app.hasInput = false;
+            app.inputWasFalseStart = false;
 
             PresentSolidColor(app, 0.0f);
 
@@ -763,6 +914,21 @@ SessionOutcome RunTestSession(App& app)
 
         case Phase::WaitingForStimulus:
         {
+            if (app.hasInput && app.inputWasFalseStart)
+            {
+                app.results.push_back(TrialResult{
+                    app.scheduledDelaySeconds,
+                    0.0,
+                    true
+                    });
+
+                std::printf("  False start: input before stimulus.\n");
+
+                ++app.trialIndex;
+                app.phase = (app.trialIndex >= app.trialCount) ? Phase::Finished : Phase::BeginTrial;
+                break;
+            }
+
             const double elapsed = QpcDeltaToSeconds(now - app.trialStartQpc, app.qpcFreq.QuadPart);
             if (elapsed >= app.scheduledDelaySeconds)
             {
@@ -790,7 +956,7 @@ SessionOutcome RunTestSession(App& app)
         }
 
         case Phase::WaitingForResponse:
-            if (app.hasInput)
+            if (app.hasInput && !app.inputWasFalseStart)
             {
                 const double reactionMs = QpcDeltaToMilliseconds(
                     app.inputQpc - app.stimulusQpc,
@@ -798,7 +964,8 @@ SessionOutcome RunTestSession(App& app)
 
                 app.results.push_back(TrialResult{
                     app.scheduledDelaySeconds,
-                    reactionMs
+                    reactionMs,
+                    false
                     });
 
                 std::printf("  Reaction: %.3f ms\n", reactionMs);
@@ -914,6 +1081,10 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int)
                 {
                     app.quitRequested = true;
                     break;
+                }
+                if (outcome == SessionOutcome::Completed)
+                {
+                    PromptCsvExport(app);
                 }
 
                 const int next = PromptPostRunChoice();

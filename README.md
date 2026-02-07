@@ -12,6 +12,7 @@ Minimal Windows reaction-time measurement tool in C++ with a low-latency archite
 - Computes reaction time as:
   - `input_timestamp - stimulus_timestamp`
 - Supports multi-trial runs and prints per-trial + average results to console.
+- Supports CSV export of trial results after each completed run.
 - Includes a console UX:
   - Main menu
   - Settings page
@@ -93,6 +94,7 @@ During a test:
 
 - Black screen: waiting random delay
 - White screen: stimulus is visible; press any key or mouse button
+- Input before white is recorded as a false start for that trial
 - `Esc`: abort current run and return to menu
 
 After a run:
@@ -101,6 +103,12 @@ After a run:
 2. Back to main menu
 3. Quit
 
+CSV export prompt appears after every completed run:
+
+1. Export to default filename
+2. Export to custom path
+3. Skip
+
 ## Accuracy Notes
 
 - Timing source is `QueryPerformanceCounter` only.
@@ -108,6 +116,22 @@ After a run:
 - Input is captured through Raw Input events, not `WM_KEYDOWN`.
 - Process/thread priority are raised during active test runs.
 - Rendering is intentionally minimal to reduce scheduling/render variability.
+
+## CSV Output
+
+Generated CSV schema:
+
+```text
+trial,random_delay_seconds,reaction_ms,false_start
+1,2.734901,184.520000,0
+2,3.118020,,1
+...
+average,,192.928500,
+```
+
+Default filename format:
+
+- `PurpleReaction_YYYYMMDD_HHMMSS.csv`
 
 ## Troubleshooting
 

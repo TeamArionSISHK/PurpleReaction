@@ -4,6 +4,7 @@ build-*/
 out/
 bin/
 obj/
+PurpleReaction_*.csv
 
 # Visual Studio
 .vs/
