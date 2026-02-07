@@ -104,6 +104,23 @@ Output paths:
 - Folder: `artifacts\release\<Configuration>\`
 - Zip: `artifacts\PurpleReaction-<Configuration>-win-x64.zip`
 
+## MSIX (Optional)
+
+You can also generate an unsigned sideload MSIX from a Visual Studio Developer PowerShell:
+
+```powershell
+.\scripts\package-msix.ps1 -Configuration Release
+```
+
+Output path:
+
+- `artifacts\msix\<Configuration>\`
+
+Notes:
+
+- This script builds an unsigned MSIX for local/testing sideload flows.
+- For production distribution, sign the MSIX with a trusted certificate.
+
 ## Runtime Options (CLI)
 
 ```text
