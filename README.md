@@ -13,11 +13,13 @@ Minimal Windows reaction-time measurement tool in C++ with a low-latency archite
   - `input_timestamp - stimulus_timestamp`
 - Supports multi-trial runs and prints per-trial + average results to console.
 - Supports CSV export of trial results after each completed run.
+- Supports non-interactive single-run mode (`--run-once`) with JSON/CSV output for external control UIs.
 - Includes a console UX:
   - Main menu
   - Settings page
   - About page
   - Redo-test flow
+- Includes an experimental WinUI 3 control-shell project at `control-ui/PurpleReaction.ControlUI`.
 
 ## Requirements
 
@@ -63,10 +65,25 @@ Run:
 
 If your machine uses an older VS generator, replace the generator name accordingly (for example `Visual Studio 17 2022`).
 
+## Build (Visual Studio Solution)
+
+Open `PurpleReaction.sln` in Visual Studio 2026 and select `x64` + (`Debug` or `Release`), then build the solution.
+
+Projects in the solution:
+
+- `PurpleReaction.Native` (native runner; outputs `build-vs18\<Configuration>\PurpleReaction.exe`)
+- `PurpleReaction.ControlUI` (WinUI control shell)
+
+Recommended startup project:
+
+- `PurpleReaction.ControlUI` for control shell workflow
+- `PurpleReaction.Native` for direct runner debugging
+
 ## Runtime Options (CLI)
 
 ```text
 PurpleReaction.exe [--min-delay seconds] [--max-delay seconds] [--trials count]
+                   [--run-once] [--json-out path] [--csv-out path]
 ```
 
 Defaults:
@@ -79,6 +96,12 @@ Example:
 
 ```powershell
 .\build-vs18\Release\PurpleReaction.exe --min-delay 1.5 --max-delay 4.0 --trials 20
+```
+
+Non-interactive single-run example (for control UI orchestration):
+
+```powershell
+.\build-vs18\Release\PurpleReaction.exe --run-once --min-delay 2.0 --max-delay 5.0 --trials 10 --json-out .\latest.json
 ```
 
 ## In-App UX
@@ -116,6 +139,28 @@ CSV export prompt appears after every completed run:
 - Input is captured through Raw Input events, not `WM_KEYDOWN`.
 - Process/thread priority are raised during active test runs.
 - Rendering is intentionally minimal to reduce scheduling/render variability.
+- The `--run-once` mode uses the same timing/render/input path as interactive mode; it only bypasses console prompts/menu flow.
+
+## WinUI Control UI (Experimental)
+
+Location:
+
+- `control-ui/PurpleReaction.ControlUI`
+
+Purpose:
+
+- Keep control/config/result browsing in a normal desktop UI.
+- Keep measurement execution in the existing fullscreen low-latency runner.
+
+Build and run from repo root:
+
+```powershell
+dotnet build .\control-ui\PurpleReaction.ControlUI\PurpleReaction.ControlUI.csproj -c Release
+dotnet run --project .\control-ui\PurpleReaction.ControlUI\PurpleReaction.ControlUI.csproj -c Release
+```
+
+The WinUI app launches `PurpleReaction.exe --run-once ... --json-out <temp file>`, waits for completion, then reads/displays results.
+In solution builds, it auto-discovers the native runner at `build-vs18\Release\PurpleReaction.exe` or `build-vs18\Debug\PurpleReaction.exe`.
 
 ## CSV Output
 
@@ -155,4 +200,7 @@ Build usually still succeeds, but for cleaner behavior copy to a local path like
 ## Project Layout
 
 - `CMakeLists.txt` - build config
+- `PurpleReaction.sln` - Visual Studio solution (native runner + control UI)
 - `src/main.cpp` - full application implementation
+- `control-ui/PurpleReaction.ControlUI` - WinUI 3 control-shell (experimental)
+- `vs/PurpleReaction.Native` - Visual Studio native C++ project for the runner

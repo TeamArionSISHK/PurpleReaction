@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.19041.0</TargetPlatformMinVersion>
+    <Platforms>x64</Platforms>
+    <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
+    <UseAppHost>true</UseAppHost>
+    <RootNamespace>PurpleReaction.ControlUI</RootNamespace>
+    <UseWinUI>true</UseWinUI>
+    <WindowsPackageType>None</WindowsPackageType>
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+    <WindowsAppSdkBootstrapInitialize>false</WindowsAppSdkBootstrapInitialize>
+    <EnableMsixTooling>true</EnableMsixTooling>
+    <NoWarn>$(NoWarn);NETSDK1206</NoWarn>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.5.240627000" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.1742" />
+  </ItemGroup>
+</Project>

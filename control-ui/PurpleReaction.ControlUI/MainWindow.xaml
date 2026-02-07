@@ -1,0 +1,85 @@
+<Window
+    x:Class="PurpleReaction.ControlUI.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    Title="PurpleReaction Control UI">
+
+    <ScrollViewer>
+        <StackPanel Spacing="16" Padding="20">
+            <TextBlock FontSize="24" FontWeight="SemiBold" Text="PurpleReaction Control UI" />
+            <TextBlock TextWrapping="Wrap" Foreground="Gray"
+                       Text="This UI configures a run, then launches the timing-accurate fullscreen test process in run-once mode." />
+
+            <Border Padding="16" BorderThickness="1" CornerRadius="8" BorderBrush="#334155">
+                <StackPanel Spacing="12">
+                    <TextBlock FontSize="18" FontWeight="SemiBold" Text="Run Settings" />
+
+                    <StackPanel Spacing="6">
+                        <TextBlock Text="PurpleReaction.exe Path" />
+                        <TextBox x:Name="ExePathTextBox" />
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <StackPanel Width="200" Spacing="6">
+                            <TextBlock Text="Min Delay (s)" />
+                            <TextBox x:Name="MinDelayTextBox" Text="2.0" />
+                        </StackPanel>
+                        <StackPanel Width="200" Spacing="6">
+                            <TextBlock Text="Max Delay (s)" />
+                            <TextBox x:Name="MaxDelayTextBox" Text="5.0" />
+                        </StackPanel>
+                        <StackPanel Width="200" Spacing="6">
+                            <TextBlock Text="Trials" />
+                            <TextBox x:Name="TrialsTextBox" Text="10" />
+                        </StackPanel>
+                    </StackPanel>
+
+                    <Button x:Name="StartRunButton" Width="200" Content="Start Fullscreen Run" Click="OnStartRunClicked" />
+                    <TextBlock x:Name="StatusTextBlock" TextWrapping="Wrap" />
+                </StackPanel>
+            </Border>
+
+            <Border Padding="16" BorderThickness="1" CornerRadius="8" BorderBrush="#334155">
+                <StackPanel Spacing="10">
+                    <TextBlock FontSize="18" FontWeight="SemiBold" Text="Latest Result" />
+                    <TextBlock x:Name="SummaryTextBlock" Text="No run yet." />
+                    <ListView x:Name="TrialsListView" Height="380">
+                        <ListView.Header>
+                            <Grid ColumnSpacing="16">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="90" />
+                                    <ColumnDefinition Width="160" />
+                                    <ColumnDefinition Width="140" />
+                                    <ColumnDefinition Width="120" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" FontWeight="SemiBold" Text="Trial" />
+                                <TextBlock Grid.Column="1" FontWeight="SemiBold" Text="Delay (s)" />
+                                <TextBlock Grid.Column="2" FontWeight="SemiBold" Text="Reaction (ms)" />
+                                <TextBlock Grid.Column="3" FontWeight="SemiBold" Text="False Start" />
+                            </Grid>
+                        </ListView.Header>
+                        <ListView.ItemTemplate>
+                            <DataTemplate>
+                                <Grid ColumnSpacing="16">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="90" />
+                                        <ColumnDefinition Width="160" />
+                                        <ColumnDefinition Width="140" />
+                                        <ColumnDefinition Width="120" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="{Binding Trial}" />
+                                    <TextBlock Grid.Column="1" Text="{Binding RandomDelaySecondsDisplay}" />
+                                    <TextBlock Grid.Column="2" Text="{Binding ReactionMsDisplay}" />
+                                    <TextBlock Grid.Column="3" Text="{Binding FalseStartDisplay}" />
+                                </Grid>
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</Window>

@@ -66,6 +66,9 @@ struct App
     int trialCount = 10;
     double minDelaySeconds = 2.0;
     double maxDelaySeconds = 5.0;
+    bool runOnceNoPrompt = false;
+    std::string jsonOutputPath;
+    std::string csvOutputPath;
 
     int trialIndex = 0;
     Phase phase = Phase::BeginTrial;
@@ -341,7 +344,7 @@ void InitD3D11(App& app, UINT refreshHz)
         hr = tryCreate(flags, levels + 1, levelCount - 1);
     }
 #if defined(_DEBUG)
-    if (hr == D3D11_ERROR_SDK_COMPONENT_MISSING)
+    if (FAILED(hr) && (flags & D3D11_CREATE_DEVICE_DEBUG))
     {
         flags &= ~D3D11_CREATE_DEVICE_DEBUG;
         hr = tryCreate(flags, levels, levelCount);
@@ -557,6 +560,116 @@ bool ExportResultsCsv(const App& app, const std::string& path)
     return true;
 }
 
+bool ExportResultsJson(const App& app, const std::string& path)
+{
+    if (app.results.empty())
+    {
+        std::printf("No results to export.\n");
+        return false;
+    }
+
+    std::ofstream out(path, std::ios::trunc);
+    if (!out.is_open())
+    {
+        std::printf("Failed to open JSON path: %s\n", path.c_str());
+        return false;
+    }
+
+    size_t validCount = 0;
+    size_t falseStartCount = 0;
+    for (const TrialResult& trial : app.results)
+    {
+        if (trial.falseStart)
+        {
+            ++falseStartCount;
+        }
+        else
+        {
+            ++validCount;
+        }
+    }
+
+    out << std::fixed << std::setprecision(6);
+    out << "{\n";
+    out << "  \"trial_count\": " << app.results.size() << ",\n";
+    out << "  \"valid_count\": " << validCount << ",\n";
+    out << "  \"false_start_count\": " << falseStartCount << ",\n";
+    out << "  \"average_reaction_ms\": ";
+    if (validCount > 0)
+    {
+        out << ComputeAverageReactionMs(app);
+    }
+    else
+    {
+        out << "null";
+    }
+    out << ",\n";
+    out << "  \"trials\": [\n";
+    for (size_t i = 0; i < app.results.size(); ++i)
+    {
+        const TrialResult& trial = app.results[i];
+        out << "    {\"trial\": " << (i + 1)
+            << ", \"random_delay_seconds\": " << trial.delaySeconds
+            << ", \"reaction_ms\": ";
+        if (trial.falseStart)
+        {
+            out << "null";
+        }
+        else
+        {
+            out << trial.reactionMs;
+        }
+        out << ", \"false_start\": " << (trial.falseStart ? "true" : "false") << "}";
+        if (i + 1 < app.results.size())
+        {
+            out << ",";
+        }
+        out << "\n";
+    }
+    out << "  ]\n";
+    out << "}\n";
+
+    if (!out.good())
+    {
+        std::printf("Failed while writing JSON: %s\n", path.c_str());
+        return false;
+    }
+
+    std::printf("JSON exported: %s\n", path.c_str());
+    return true;
+}
+
+std::string WideToUtf8(const wchar_t* value)
+{
+    if (!value || *value == L'\0')
+    {
+        return {};
+    }
+
+    const int requiredChars = WideCharToMultiByte(CP_UTF8, 0, value, -1, nullptr, 0, nullptr, nullptr);
+    if (requiredChars <= 1)
+    {
+        return {};
+    }
+
+    std::string result(static_cast<size_t>(requiredChars), '\0');
+    const int convertedChars = WideCharToMultiByte(
+        CP_UTF8,
+        0,
+        value,
+        -1,
+        result.data(),
+        requiredChars,
+        nullptr,
+        nullptr);
+    if (convertedChars <= 1)
+    {
+        return {};
+    }
+    result.resize(static_cast<size_t>(convertedChars) - 1);
+    return result;
+}
+
 bool TryParseDoubleW(const wchar_t* value, double& out)
 {
     if (!value || *value == L'\0')
@@ -641,6 +754,7 @@ void PrintUsage()
 {
     std::printf("Usage:\n");
     std::printf("  PurpleReaction.exe [--min-delay seconds] [--max-delay seconds] [--trials count]\n");
+    std::printf("                     [--run-once] [--json-out path] [--csv-out path]\n");
     std::printf("Defaults: --min-delay 2.0 --max-delay 5.0 --trials 10\n");
 }
 
@@ -684,6 +798,38 @@ ArgParseResult ParseArgs(App& app)
                 break;
             }
         }
+        else if (wcscmp(arg, L"--run-once") == 0)
+        {
+            app.runOnceNoPrompt = true;
+        }
+        else if (wcscmp(arg, L"--json-out") == 0)
+        {
+            if (i + 1 >= argc)
+            {
+                ok = false;
+                break;
+            }
+            app.jsonOutputPath = WideToUtf8(argv[++i]);
+            if (app.jsonOutputPath.empty())
+            {
+                ok = false;
+                break;
+            }
+        }
+        else if (wcscmp(arg, L"--csv-out") == 0)
+        {
+            if (i + 1 >= argc)
+            {
+                ok = false;
+                break;
+            }
+            app.csvOutputPath = WideToUtf8(argv[++i]);
+            if (app.csvOutputPath.empty())
+            {
+                ok = false;
+                break;
+            }
+        }
         else if (wcscmp(arg, L"--help") == 0 || wcscmp(arg, L"-h") == 0)
         {
             helpRequested = true;
@@ -700,12 +846,10 @@ ArgParseResult ParseArgs(App& app)
 
     if (helpRequested)
     {
-        PrintUsage();
         return ArgParseResult::ExitRequested;
     }
     if (!ok || app.minDelaySeconds <= 0.0 || app.maxDelaySeconds <= 0.0 || app.minDelaySeconds >= app.maxDelaySeconds)
     {
-        PrintUsage();
         return ArgParseResult::Error;
     }
 
@@ -861,15 +1005,18 @@ void ResetSessionState(App& app)
     app.delayDist = std::uniform_real_distribution<double>(app.minDelaySeconds, app.maxDelaySeconds);
 }
 
-SessionOutcome RunTestSession(App& app)
+SessionOutcome RunTestSession(App& app, bool promptForStart)
 {
     ResetSessionState(app);
 
     std::printf("\n=== Test Run ===\n");
-    std::printf("Fullscreen starts after you press Enter.\n");
     std::printf("Wait for white screen, then press any key or mouse button as fast as possible.\n");
     std::printf("Press Esc during a run to abort back to menu.\n");
-    (void)ReadLine("Press Enter to begin...");
+    if (promptForStart)
+    {
+        std::printf("Fullscreen starts after you press Enter.\n");
+        (void)ReadLine("Press Enter to begin...");
+    }
 
     EnterFullscreen(app);
     SetRealtimePriority(true);
@@ -1013,18 +1160,30 @@ int PromptPostRunChoice()
 
 int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int)
 {
-    CreateConsole();
-
     App app{};
 
     const ArgParseResult argResult = ParseArgs(app);
     if (argResult == ArgParseResult::ExitRequested)
     {
+        if (!app.runOnceNoPrompt)
+        {
+            CreateConsole();
+            PrintUsage();
+        }
         return 0;
     }
     if (argResult == ArgParseResult::Error)
     {
+        if (!app.runOnceNoPrompt)
+        {
+            CreateConsole();
+            PrintUsage();
+        }
         return 1;
+    }
+    if (!app.runOnceNoPrompt)
+    {
+        CreateConsole();
     }
 
     DEVMODEW dm{};
@@ -1049,71 +1208,98 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int)
     InitD3D11(app, dm.dmDisplayFrequency > 0 ? dm.dmDisplayFrequency : 60);
     ShowWindow(app.hwnd, SW_HIDE);
 
-    std::printf("PurpleReaction ready.\n");
-
-    while (!app.quitRequested)
+    int exitCode = 0;
+    if (app.runOnceNoPrompt)
     {
-        PumpMessages(app);
-        if (app.quitRequested)
+        const SessionOutcome outcome = RunTestSession(app, false);
+        if (outcome == SessionOutcome::Completed)
         {
-            break;
-        }
-
-        std::printf("\n=== PurpleReaction ===\n");
-        std::printf("Current settings: delay %.3f-%.3f s, trials %d\n",
-            app.minDelaySeconds,
-            app.maxDelaySeconds,
-            app.trialCount);
-        std::printf("1. Start test\n");
-        std::printf("2. Settings\n");
-        std::printf("3. About\n");
-        std::printf("4. Quit\n");
-
-        const int menuChoice = PromptChoice("Select option: ", 1, 4);
-
-        if (menuChoice == 1)
-        {
-            bool keepRunningTests = true;
-            while (keepRunningTests && !app.quitRequested)
+            if (!app.csvOutputPath.empty() && !ExportResultsCsv(app, app.csvOutputPath))
             {
-                const SessionOutcome outcome = RunTestSession(app);
-                if (outcome == SessionOutcome::QuitRequested)
-                {
-                    app.quitRequested = true;
-                    break;
-                }
-                if (outcome == SessionOutcome::Completed)
-                {
-                    PromptCsvExport(app);
-                }
-
-                const int next = PromptPostRunChoice();
-                if (next == 1)
-                {
-                    keepRunningTests = true;
-                }
-                else if (next == 2)
-                {
-                    keepRunningTests = false;
-                }
-                else
-                {
-                    app.quitRequested = true;
-                    keepRunningTests = false;
-                }
+                exitCode = 2;
+            }
+            if (!app.jsonOutputPath.empty() && !ExportResultsJson(app, app.jsonOutputPath))
+            {
+                exitCode = 2;
             }
         }
-        else if (menuChoice == 2)
+        else if (outcome == SessionOutcome::Aborted)
         {
-            ShowSettingsPage(app);
-        }
-        else if (menuChoice == 3)
-        {
-            ShowAboutPage();
+            exitCode = 3;
         }
         else
         {
-            app.quitRequested = true;
+            exitCode = 4;
+        }
+    }
+    else
+    {
+        std::printf("PurpleReaction ready.\n");
+
+        while (!app.quitRequested)
+        {
+            PumpMessages(app);
+            if (app.quitRequested)
+            {
+                break;
+            }
+
+            std::printf("\n=== PurpleReaction ===\n");
+            std::printf("Current settings: delay %.3f-%.3f s, trials %d\n",
+                app.minDelaySeconds,
+                app.maxDelaySeconds,
+                app.trialCount);
+            std::printf("1. Start test\n");
+            std::printf("2. Settings\n");
+            std::printf("3. About\n");
+            std::printf("4. Quit\n");
+
+            const int menuChoice = PromptChoice("Select option: ", 1, 4);
+
+            if (menuChoice == 1)
+            {
+                bool keepRunningTests = true;
+                while (keepRunningTests && !app.quitRequested)
+                {
+                    const SessionOutcome outcome = RunTestSession(app, true);
+                    if (outcome == SessionOutcome::QuitRequested)
+                    {
+                        app.quitRequested = true;
+                        break;
+                    }
+                    if (outcome == SessionOutcome::Completed)
+                    {
+                        PromptCsvExport(app);
+                    }
+
+                    const int next = PromptPostRunChoice();
+                    if (next == 1)
+                    {
+                        keepRunningTests = true;
+                    }
+                    else if (next == 2)
+                    {
+                        keepRunningTests = false;
+                    }
+                    else
+                    {
+                        app.quitRequested = true;
+                        keepRunningTests = false;
+                    }
+                }
+            }
+            else if (menuChoice == 2)
+            {
+                ShowSettingsPage(app);
+            }
+            else if (menuChoice == 3)
+            {
+                ShowAboutPage();
+            }
+            else
+            {
+                app.quitRequested = true;
+            }
         }
     }
 
@@ -1127,5 +1313,5 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int)
         DestroyWindow(app.hwnd);
     }
 
-    return 0;
+    return exitCode;
 }
