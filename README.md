@@ -23,8 +23,6 @@ Minimal Windows reaction-time measurement tool in C++ with a low-latency archite
 
 ## Requirements
 
-Hard requirements:
-
 - Windows 10/11 (64-bit)
 - GPU + driver with DirectX 11 support
 - Visual Studio with C++ desktop tooling installed
@@ -172,7 +170,7 @@ CSV export prompt appears after every completed run:
 - Rendering is intentionally minimal to reduce scheduling/render variability.
 - The `--run-once` mode uses the same timing/render/input path as interactive mode; it only bypasses console prompts/menu flow.
 
-## WinUI Control UI (Experimental)
+## WinUI Control UI
 
 Location:
 
@@ -223,11 +221,6 @@ Remove-Item -Recurse -Force .\build-vs18
 ### VS toolset mismatch (example: v143 not found)
 
 Use the generator matching your installed Visual Studio version, or install the missing toolset via Visual Studio Installer.
-
-### UNC path warnings (`\\wsl.localhost\...`)
-
-Building from UNC paths can produce MSBuild incremental warnings (`MSB8064/MSB8065`).  
-Build usually still succeeds, but for cleaner behavior copy to a local path like `C:\dev\PurpleReaction`.
 
 ## Project Layout
 
